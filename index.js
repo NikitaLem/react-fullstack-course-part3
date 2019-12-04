@@ -1,30 +1,8 @@
 const resource = "/api/persons";
-let persons = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456"
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "34-44-53223523"
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345"
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122"
-  }
-];
 
 const express = require("express");
+const fs = require('fs');
 const app = express();
-const bodyParser = require("body-parser");
 const morgan = require("morgan");
 
 morgan.token('with-body', (req, res) => {
@@ -35,38 +13,45 @@ morgan.token('with-body', (req, res) => {
 
 app.post(
   resource,
-  bodyParser.urlencoded({
-    extended: true
-  }),
-  bodyParser.json(),
+  express.json(),
   morgan("with-body")
 );
 
-const generateId = () => {
+const generateId = data => {
   let id = parseInt(Math.random() * Number.MAX_SAFE_INTEGER);
-  const check = persons.find(p => p.id === id);
-  return check ? generateId() : id;
+  const check = data.find(p => p.id === id);
+  return check ? generateId(data) : id;
 };
 
 app.get(resource, (req, res) => {
-  res.json(persons);
+  fs.readFile('./db.json', 'utf-8', (err, data) => {
+    res.json(JSON.parse(data));
+  });
 });
 
 app.get(`${resource}/:id`, (req, res) => {
   const id = +req.params.id;
-  const person = persons.find(p => p.id === id);
+  fs.readFile('./db.json', 'utf-8', (err, data) => {
+    let persons = JSON.parse(data);
+    person = persons.find(p => p.id === id);
 
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(404).end();
-  }
+    if (person) {
+      res.json(person);
+    } else {
+      res.status(404).end();
+    }
+  });
 });
 
 app.delete(`${resource}/:id`, (req, res) => {
   const id = +req.params.id;
-  persons = persons.filter(p => p.id !== id);
-  res.status(204).end();
+  fs.readFile('./db.json', 'utf-8', (err, data) => {
+    let persons = JSON.parse(data);
+    persons = persons.filter(p => p.id !== id);
+    fs.writeFile('./db.json', JSON.stringify(persons), 'utf-8', () => {
+      res.status(204).end();
+    });
+  });
 });
 
 app.post(resource, (req, res) => {
@@ -78,20 +63,26 @@ app.post(resource, (req, res) => {
     });
   }
 
-  if (persons.find(p => p.name === name)) {
-    return res.status(400).json({
-      error: "name must be unique!"
+  fs.readFile('./db.json', 'utf-8', (err, data) => {
+    let persons = JSON.parse(data);
+    
+    if (persons.find(p => p.name === name)) {
+      return res.status(400).json({
+        error: "name must be unique!"
+      });
+    }
+
+    const person = {
+      id: generateId(persons),
+      name,
+      number
+    };
+  
+    persons = persons.concat(person);
+    fs.writeFile('./db.json', JSON.stringify(persons), 'utf-8', () => {
+      res.json(person);
     });
-  }
-
-  const person = {
-    id: generateId(),
-    name,
-    number
-  };
-
-  persons = persons.concat(person);
-  res.json(person);
+  });
 });
 
 app.get("/info", (req, res) => {
