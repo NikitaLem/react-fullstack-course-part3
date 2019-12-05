@@ -1,8 +1,10 @@
 const express = require("express");
 const app = express();
+const cors = require('cors');
 const personsRouter = require('./routes/persons');
 const resource = "/api/persons";
 
+app.use(cors());
 app.use(resource, personsRouter);
 
 app.get("/info", (req, res) => {

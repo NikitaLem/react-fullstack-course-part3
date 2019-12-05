@@ -2,29 +2,29 @@ const fs = require("fs");
 const express = require('express');
 const router = express.Router();
 const morgan = require("morgan");
-const { generateId } = require('../helpers');
 
-morgan.token('with-body', (req, res) => {
-  const prefix = ':method :url :status :res[content-length] - :response-time ms';
-  const content = JSON.stringify(req.body);
-  return `${prefix} ${content}`;
+morgan.token('body', (req, res) => {
+  return JSON.stringify(req.body);
 });
+
+const dbPath = './db.json';
+const { generateId } = require('../helpers');
 
 router.post(
   '/',
   express.json(),
-  morgan("with-body")
+  morgan(":method :url :status :res[content-length] - :response-time ms :body")
 );
 
 router.get('/', (req, res) => {
-  fs.readFile('./db.json', 'utf-8', (err, data) => {
+  fs.readFile(dbPath, 'utf-8', (err, data) => {
     res.json(JSON.parse(data));
   });
 });
 
 router.get('/:id', (req, res) => {
   const id = +req.params.id;
-  fs.readFile('./db.json', 'utf-8', (err, data) => {
+  fs.readFile(dbPath, 'utf-8', (err, data) => {
     let persons = JSON.parse(data);
     person = persons.find(p => p.id === id);
 
@@ -38,10 +38,10 @@ router.get('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   const id = +req.params.id;
-  fs.readFile('./db.json', 'utf-8', (err, data) => {
+  fs.readFile(dbPath, 'utf-8', (err, data) => {
     let persons = JSON.parse(data);
     persons = persons.filter(p => p.id !== id);
-    fs.writeFile('./db.json', JSON.stringify(persons), 'utf-8', () => {
+    fs.writeFile(dbPath, JSON.stringify(persons), 'utf-8', () => {
       res.status(204).end();
     });
   });
@@ -56,7 +56,7 @@ router.post('/', (req, res) => {
     });
   }
 
-  fs.readFile('./db.json', 'utf-8', (err, data) => {
+  fs.readFile(dbPath, 'utf-8', (err, data) => {
     let persons = JSON.parse(data);
     
     if (persons.find(p => p.name === name)) {
@@ -72,7 +72,7 @@ router.post('/', (req, res) => {
     };
   
     persons = persons.concat(person);
-    fs.writeFile('./db.json', JSON.stringify(persons), 'utf-8', () => {
+    fs.writeFile(dbPath, JSON.stringify(persons), 'utf-8', () => {
       res.json(person);
     });
   });
